@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import uuid
 from flask import Flask, render_template, request, send_file, jsonify, session
 from werkzeug.utils import secure_filename
 import subprocess
@@ -101,7 +102,7 @@ def download_video_audio(url, output_dir):
     
     try:
         # Generate a unique temp filename
-        temp_base = os.path.join(output_dir, f"temp_audio_{os.getpid()}")
+        temp_base = os.path.join(output_dir, f"temp_audio_{uuid.uuid4().hex[:8]}")
         
         # Configure yt-dlp options with better settings to avoid blocks
         ydl_opts = {
@@ -190,7 +191,7 @@ def download_video(url, output_dir):
     
     try:
         # Generate a unique temp filename
-        temp_base = os.path.join(output_dir, f"temp_video_{os.getpid()}")
+        temp_base = os.path.join(output_dir, f"temp_video_{uuid.uuid4().hex[:8]}")
         
         # Configure yt-dlp options for video download
         ydl_opts = {
