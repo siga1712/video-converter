@@ -136,15 +136,40 @@ def download_video_audio(url, output_dir):
             if info:
                 title = info.get('title', 'downloaded_audio')
         
-        # Find the output file
+        # Find the output file (prefer mp3)
         output_file = f"{temp_base}.mp3"
+        non_mp3_file = None
+        
         if not os.path.exists(output_file):
-            # Sometimes the extension differs
-            for ext in ['mp3', 'm4a', 'webm', 'opus']:
+            # Sometimes the extension differs - find what was actually downloaded
+            for ext in ['m4a', 'webm', 'opus', 'ogg', 'wav', 'mp3']:
                 check_file = f"{temp_base}.{ext}"
                 if os.path.exists(check_file):
-                    output_file = check_file
+                    if ext == 'mp3':
+                        output_file = check_file
+                    else:
+                        non_mp3_file = check_file
                     break
+        
+        # If we got a non-MP3 file, convert it to MP3
+        if non_mp3_file and not os.path.exists(output_file):
+            mp3_output = f"{temp_base}.mp3"
+            try:
+                # Convert to MP3 using ffmpeg
+                cmd = ['ffmpeg', '-y', '-i', non_mp3_file, '-vn', '-acodec', 'libmp3lame', '-q:a', '2', mp3_output]
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                if result.returncode == 0 and os.path.exists(mp3_output):
+                    # Remove original non-mp3 file
+                    try:
+                        os.remove(non_mp3_file)
+                    except:
+                        pass
+                    output_file = mp3_output
+                else:
+                    # Fallback to the non-mp3 file if conversion fails
+                    output_file = non_mp3_file
+            except Exception:
+                output_file = non_mp3_file
         
         if not os.path.exists(output_file):
             raise Exception("Download completed but output file not found")
@@ -155,6 +180,8 @@ def download_video_audio(url, output_dir):
         error_msg = str(e)
         if '403' in error_msg:
             raise Exception("YouTube is blocking the download. Try a different video or try again later.")
+        if 'Sign in to confirm' in error_msg or 'bot' in error_msg.lower():
+            raise Exception("YouTube requires sign-in for this video. Try a different video or use file upload instead.")
         raise Exception(f"Download failed: {error_msg}")
 
 def add_id3_tags(mp3_path, title=None, artist=None, album=None, genre=None, track=None, year=None, comment=None):
