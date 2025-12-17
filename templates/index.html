@@ -714,11 +714,29 @@
                         // Success - download the file
                         const blob = await response.blob();
                         const disposition = response.headers.get('content-disposition');
-                        let filename = 'converted_audio.mp3';
 
+                        // Get filename from metadata or fallback
+                        let filename = document.getElementById('meta_title').value.trim();
+                        if (filename) {
+                            filename = filename.replace(/[^\w\s-]/g, '').replace(/[\s]+/g, '_') + '.mp3';
+                        } else {
+                            filename = 'converted_audio.mp3';
+                        }
+
+                        // Try to extract from Content-Disposition header
                         if (disposition) {
-                            const match = disposition.match(/filename="?([^";\n]+)"?/);
-                            if (match) filename = decodeURIComponent(match[1]);
+                            // Match filename*=UTF-8'' or filename= patterns
+                            let match = disposition.match(/filename\*=(?:UTF-8'')?([^;\n]+)/i);
+                            if (!match) {
+                                match = disposition.match(/filename="?([^"\n;]+)"?/i);
+                            }
+                            if (match && match[1]) {
+                                try {
+                                    filename = decodeURIComponent(match[1].trim());
+                                } catch (e) {
+                                    filename = match[1].trim();
+                                }
+                            }
                         }
 
                         const url = window.URL.createObjectURL(blob);
@@ -786,11 +804,29 @@
                     if (contentType && contentType.includes('audio')) {
                         const blob = await response.blob();
                         const disposition = response.headers.get('content-disposition');
-                        let filename = 'converted_audio.mp3';
 
+                        // Get filename from metadata or original file
+                        let filename = document.getElementById('file_meta_title').value.trim();
+                        if (filename) {
+                            filename = filename.replace(/[^\w\s-]/g, '').replace(/[\s]+/g, '_') + '.mp3';
+                        } else {
+                            const originalName = fileInput.files[0]?.name || 'converted_audio';
+                            filename = originalName.replace(/\.[^/.]+$/, '') + '.mp3';
+                        }
+
+                        // Try to extract from Content-Disposition header
                         if (disposition) {
-                            const match = disposition.match(/filename="?([^";\n]+)"?/);
-                            if (match) filename = decodeURIComponent(match[1]);
+                            let match = disposition.match(/filename\*=(?:UTF-8'')?([^;\n]+)/i);
+                            if (!match) {
+                                match = disposition.match(/filename="?([^"\n;]+)"?/i);
+                            }
+                            if (match && match[1]) {
+                                try {
+                                    filename = decodeURIComponent(match[1].trim());
+                                } catch (e) {
+                                    filename = match[1].trim();
+                                }
+                            }
                         }
 
                         const url = window.URL.createObjectURL(blob);
