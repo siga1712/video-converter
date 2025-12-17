@@ -856,6 +856,11 @@
                             }
                         }
 
+                        // Ensure correct extension
+                        if (!filename.toLowerCase().endsWith(ext)) {
+                            filename = filename.replace(/\.[^/.]+$/, '') + ext;
+                        }
+
                         const url = window.URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
@@ -946,6 +951,11 @@
                                     filename = match[1].trim();
                                 }
                             }
+                        }
+
+                        // Ensure correct extension
+                        if (!filename.toLowerCase().endsWith(ext)) {
+                            filename = filename.replace(/\.[^/.]+$/, '') + ext;
                         }
 
                         const url = window.URL.createObjectURL(blob);
