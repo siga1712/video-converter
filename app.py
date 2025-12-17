@@ -179,9 +179,82 @@ def download_video_audio(url, output_dir):
     except Exception as e:
         error_msg = str(e)
         if '403' in error_msg:
-            raise Exception("YouTube is blocking the download. Try a different video or try again later.")
+            raise Exception("This site is blocking the download. Try a different video or try again later.")
         if 'Sign in to confirm' in error_msg or 'bot' in error_msg.lower():
-            raise Exception("YouTube requires sign-in for this video. Try a different video or use file upload instead.")
+            raise Exception("This site requires sign-in. Try a different video or use file upload instead.")
+        raise Exception(f"Download failed: {error_msg}")
+
+def download_video(url, output_dir):
+    """Download video as MP4 from any supported site using yt-dlp"""
+    import yt_dlp
+    
+    try:
+        # Generate a unique temp filename
+        temp_base = os.path.join(output_dir, f"temp_video_{os.getpid()}")
+        
+        # Configure yt-dlp options for video download
+        ydl_opts = {
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+            'outtmpl': f'{temp_base}.%(ext)s',
+            'noplaylist': True,
+            'quiet': True,
+            'no_warnings': True,
+            'merge_output_format': 'mp4',
+            # Better headers to avoid blocks
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-us,en;q=0.5',
+            },
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web'],
+                }
+            },
+        }
+        
+        title = "downloaded_video"
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            if info:
+                title = info.get('title', 'downloaded_video')
+        
+        # Find the output file
+        output_file = f"{temp_base}.mp4"
+        if not os.path.exists(output_file):
+            # Check for other video formats
+            for ext in ['mp4', 'mkv', 'webm', 'mov', 'avi']:
+                check_file = f"{temp_base}.{ext}"
+                if os.path.exists(check_file):
+                    # Convert to mp4 if not already
+                    if ext != 'mp4':
+                        mp4_output = f"{temp_base}.mp4"
+                        try:
+                            cmd = ['ffmpeg', '-y', '-i', check_file, '-c:v', 'copy', '-c:a', 'copy', mp4_output]
+                            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+                            if result.returncode == 0 and os.path.exists(mp4_output):
+                                os.remove(check_file)
+                                output_file = mp4_output
+                            else:
+                                output_file = check_file
+                        except:
+                            output_file = check_file
+                    else:
+                        output_file = check_file
+                    break
+        
+        if not os.path.exists(output_file):
+            raise Exception("Download completed but output file not found")
+        
+        return output_file, sanitize_filename(title)
+        
+    except Exception as e:
+        error_msg = str(e)
+        if '403' in error_msg:
+            raise Exception("This site is blocking the download. Try a different video or try again later.")
+        if 'Sign in to confirm' in error_msg or 'bot' in error_msg.lower():
+            raise Exception("This site requires sign-in. Try a different video or use file upload instead.")
         raise Exception(f"Download failed: {error_msg}")
 
 def add_id3_tags(mp3_path, title=None, artist=None, album=None, genre=None, track=None, year=None, comment=None):
@@ -218,6 +291,44 @@ def add_id3_tags(mp3_path, title=None, artist=None, album=None, genre=None, trac
     except Exception as e:
         print(f"Error adding ID3 tags: {e}")
         return False
+
+def trim_video(input_path, output_path, start_time=None, end_time=None):
+    """Trim or copy video using ffmpeg"""
+    cmd = ['ffmpeg', '-y', '-i', input_path]
+    
+    # Add trimming options
+    if start_time is not None:
+        cmd.extend(['-ss', str(start_time)])
+    if end_time is not None:
+        if start_time is not None:
+            duration = end_time - start_time
+            cmd.extend(['-t', str(duration)])
+        else:
+            cmd.extend(['-to', str(end_time)])
+    
+    # Copy streams without re-encoding (fast)
+    cmd.extend(['-c', 'copy', output_path])
+    
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    
+    if result.returncode != 0:
+        # If copy fails (incompatible codecs), try with re-encoding
+        cmd = ['ffmpeg', '-y', '-i', input_path]
+        if start_time is not None:
+            cmd.extend(['-ss', str(start_time)])
+        if end_time is not None:
+            if start_time is not None:
+                duration = end_time - start_time
+                cmd.extend(['-t', str(duration)])
+            else:
+                cmd.extend(['-to', str(end_time)])
+        cmd.extend(['-c:v', 'libx264', '-c:a', 'aac', output_path])
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        
+        if result.returncode != 0:
+            raise Exception(f"Video processing failed: {result.stderr}")
+    
+    return True
 
 def convert_to_mp3_ffmpeg(input_path, output_path, start_time=None, end_time=None):
     """Convert audio/video to MP3 with optional trimming using ffmpeg"""
@@ -307,16 +418,17 @@ def fetch_info():
 
 @app.route('/convert', methods=['POST'])
 def convert():
-    """Convert video to MP3 with metadata"""
+    """Convert video to MP3 or MP4"""
     temp_file = None
-    audio_path = None
+    output_path = None
     
     try:
         input_type = request.form.get('input_type', 'file')
+        output_format = request.form.get('output_format', 'mp3')  # mp3 or mp4
         start_time = parse_time_to_seconds(request.form.get('start_time', ''))
         end_time = parse_time_to_seconds(request.form.get('end_time', ''))
         
-        # Metadata fields
+        # Metadata fields (for MP3 only)
         meta_title = request.form.get('meta_title', '').strip()
         meta_artist = request.form.get('meta_artist', '').strip()
         meta_album = request.form.get('meta_album', '').strip()
@@ -332,22 +444,53 @@ def convert():
             if not video_url:
                 return jsonify({'error': 'Please enter a video URL'}), 400
             
-            # Download and convert using yt-dlp
-            temp_file, title = download_video_audio(video_url, UPLOAD_FOLDER)
-            
-            # Use metadata title for filename if provided
-            if meta_title:
-                title = sanitize_filename(meta_title)
-            
-            # If trimming is needed, process with ffmpeg
-            if start_time is not None or end_time is not None:
-                audio_path = os.path.join(UPLOAD_FOLDER, f"{title}_trimmed.mp3")
-                convert_to_mp3(temp_file, audio_path, start_time, end_time)
+            if output_format == 'mp4':
+                # Download as video
+                temp_file, title = download_video(video_url, UPLOAD_FOLDER)
+                
+                # Use metadata title for filename if provided
+                if meta_title:
+                    title = sanitize_filename(meta_title)
+                
+                # If trimming is needed, process with ffmpeg
+                if start_time is not None or end_time is not None:
+                    output_path = os.path.join(UPLOAD_FOLDER, f"{title}_trimmed.mp4")
+                    trim_video(temp_file, output_path, start_time, end_time)
+                else:
+                    output_path = temp_file
+                    temp_file = None
+                
+                download_filename = f"{title}.mp4"
+                mimetype = 'video/mp4'
             else:
-                audio_path = temp_file
-                temp_file = None  # Don't delete since we're using it directly
-            
-            download_filename = f"{title}.mp3"
+                # Download as audio (MP3)
+                temp_file, title = download_video_audio(video_url, UPLOAD_FOLDER)
+                
+                if meta_title:
+                    title = sanitize_filename(meta_title)
+                
+                if start_time is not None or end_time is not None:
+                    output_path = os.path.join(UPLOAD_FOLDER, f"{title}_trimmed.mp3")
+                    convert_to_mp3(temp_file, output_path, start_time, end_time)
+                else:
+                    output_path = temp_file
+                    temp_file = None
+                
+                download_filename = f"{title}.mp3"
+                mimetype = 'audio/mpeg'
+                
+                # Add ID3 tags for MP3
+                if any([meta_title, meta_artist, meta_album, meta_genre, meta_track, meta_year, meta_comment]):
+                    add_id3_tags(
+                        output_path,
+                        title=meta_title,
+                        artist=meta_artist,
+                        album=meta_album,
+                        genre=meta_genre,
+                        track=meta_track,
+                        year=meta_year,
+                        comment=meta_comment
+                    )
             
         else:
             # Handle file upload
@@ -361,37 +504,41 @@ def convert():
             video_file.save(temp_file)
             base_name = os.path.splitext(filename)[0]
             
-            # Use metadata title for filename if provided
             if meta_title:
                 base_name = sanitize_filename(meta_title)
             
-            # Define output path
-            audio_path = os.path.join(UPLOAD_FOLDER, f"{base_name}.mp3")
-            
-            # Convert to MP3 with optional trimming
-            convert_to_mp3(temp_file, audio_path, start_time, end_time)
-            
-            download_filename = f"{base_name}.mp3"
-        
-        # Add ID3 tags if any metadata provided
-        if any([meta_title, meta_artist, meta_album, meta_genre, meta_track, meta_year, meta_comment]):
-            add_id3_tags(
-                audio_path,
-                title=meta_title,
-                artist=meta_artist,
-                album=meta_album,
-                genre=meta_genre,
-                track=meta_track,
-                year=meta_year,
-                comment=meta_comment
-            )
+            if output_format == 'mp4':
+                # Convert/trim video
+                output_path = os.path.join(UPLOAD_FOLDER, f"{base_name}_output.mp4")
+                trim_video(temp_file, output_path, start_time, end_time)
+                download_filename = f"{base_name}.mp4"
+                mimetype = 'video/mp4'
+            else:
+                # Convert to MP3
+                output_path = os.path.join(UPLOAD_FOLDER, f"{base_name}.mp3")
+                convert_to_mp3(temp_file, output_path, start_time, end_time)
+                download_filename = f"{base_name}.mp3"
+                mimetype = 'audio/mpeg'
+                
+                # Add ID3 tags for MP3
+                if any([meta_title, meta_artist, meta_album, meta_genre, meta_track, meta_year, meta_comment]):
+                    add_id3_tags(
+                        output_path,
+                        title=meta_title,
+                        artist=meta_artist,
+                        album=meta_album,
+                        genre=meta_genre,
+                        track=meta_track,
+                        year=meta_year,
+                        comment=meta_comment
+                    )
         
         # Send the file to user with proper filename
         return send_file(
-            audio_path, 
+            output_path, 
             as_attachment=True, 
             download_name=download_filename,
-            mimetype='audio/mpeg'
+            mimetype=mimetype
         )
         
     except Exception as e:

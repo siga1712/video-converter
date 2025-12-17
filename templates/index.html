@@ -206,6 +206,45 @@
             text-align: center;
         }
 
+        /* Format Selector */
+        .format-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .format-btn {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.08);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .format-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .format-btn.active {
+            background: linear-gradient(135deg, #00d4ff, #7c3aed);
+            color: white;
+            border-color: transparent;
+        }
+
+        .format-btn .format-icon {
+            font-size: 1.2rem;
+        }
+
         /* Metadata Form Styles */
         .metadata-section {
             display: none;
@@ -450,7 +489,21 @@
 
                     <!-- File upload gets metadata and convert in one step -->
                     <div class="section-box">
-                        <h3>✂️ Trim Audio (Optional)</h3>
+                        <h3>📦 Output Format</h3>
+                        <div class="format-selector">
+                            <button type="button" class="format-btn active" id="file_format_mp3"
+                                onclick="selectFileFormat('mp3')">
+                                <span class="format-icon">🎵</span> MP3 Audio
+                            </button>
+                            <button type="button" class="format-btn" id="file_format_mp4"
+                                onclick="selectFileFormat('mp4')">
+                                <span class="format-icon">🎬</span> MP4 Video
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="section-box">
+                        <h3>✂️ Trim (Optional)</h3>
                         <div class="time-inputs">
                             <div class="time-group">
                                 <label>Start Time</label>
@@ -515,9 +568,22 @@
             <form id="convertForm">
                 <input type="hidden" name="input_type" value="url">
                 <input type="hidden" name="video_url" id="convert_video_url">
+                <input type="hidden" name="output_format" id="output_format" value="mp3">
 
                 <div class="section-box">
-                    <h3>✂️ Trim Audio (Optional)</h3>
+                    <h3>📦 Output Format</h3>
+                    <div class="format-selector">
+                        <button type="button" class="format-btn active" onclick="selectFormat('mp3', this)">
+                            <span class="format-icon">🎵</span> MP3 Audio
+                        </button>
+                        <button type="button" class="format-btn" onclick="selectFormat('mp4', this)">
+                            <span class="format-icon">🎬</span> MP4 Video
+                        </button>
+                    </div>
+                </div>
+
+                <div class="section-box">
+                    <h3>✂️ Trim (Optional)</h3>
                     <div class="time-inputs">
                         <div class="time-group">
                             <label>Start Time</label>
@@ -596,6 +662,55 @@
                 document.querySelector('.tab:last-child').classList.add('active');
                 document.getElementById('file-section').classList.add('active');
                 document.getElementById('stepIndicator').style.display = 'none';
+            }
+        }
+
+        // Format selection for URL downloads
+        let selectedFormat = 'mp3';
+        let fileSelectedFormat = 'mp3';
+
+        function selectFormat(format, btn) {
+            selectedFormat = format;
+            document.getElementById('output_format').value = format;
+
+            // Update button states
+            document.querySelectorAll('#convertForm .format-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Show/hide metadata section based on format
+            const metadataSection = document.querySelector('#step2-content .section-box:has(.metadata-grid)');
+            if (metadataSection) {
+                metadataSection.style.display = format === 'mp3' ? 'block' : 'none';
+            }
+
+            // Update submit button text
+            const submitBtn = document.querySelector('#convertForm .submit-btn');
+            if (format === 'mp4') {
+                submitBtn.innerHTML = '<span>🎬</span> Download MP4 Video';
+            } else {
+                submitBtn.innerHTML = '<span>🎧</span> Convert & Download MP3';
+            }
+        }
+
+        function selectFileFormat(format) {
+            fileSelectedFormat = format;
+
+            // Update button states
+            document.getElementById('file_format_mp3').classList.toggle('active', format === 'mp3');
+            document.getElementById('file_format_mp4').classList.toggle('active', format === 'mp4');
+
+            // Show/hide metadata section based on format
+            const metadataSection = document.querySelector('#file-section .metadata-section');
+            if (metadataSection) {
+                metadataSection.style.display = format === 'mp3' ? 'block' : 'none';
+            }
+
+            // Update submit button text
+            const submitBtn = document.querySelector('#file-section .submit-btn');
+            if (format === 'mp4') {
+                submitBtn.innerHTML = '<span>🎬</span> Convert & Download MP4';
+            } else {
+                submitBtn.innerHTML = '<span>🎧</span> Convert & Download MP3';
             }
         }
 
@@ -698,7 +813,8 @@
         document.getElementById('convertForm').addEventListener('submit', async function (e) {
             e.preventDefault();
 
-            showLoading('Converting your video... This may take a moment.');
+            const loadingMsg = selectedFormat === 'mp4' ? 'Downloading video...' : 'Converting to MP3...';
+            showLoading(loadingMsg + ' This may take a moment.');
 
             try {
                 const formData = new FormData(this);
@@ -710,17 +826,18 @@
                 if (response.ok) {
                     const contentType = response.headers.get('content-type');
 
-                    if (contentType && contentType.includes('audio')) {
+                    if (contentType && (contentType.includes('audio') || contentType.includes('video'))) {
                         // Success - download the file
                         const blob = await response.blob();
                         const disposition = response.headers.get('content-disposition');
 
                         // Get filename from metadata or fallback
+                        const ext = selectedFormat === 'mp4' ? '.mp4' : '.mp3';
                         let filename = document.getElementById('meta_title').value.trim();
                         if (filename) {
-                            filename = filename.replace(/[^\w\s-]/g, '').replace(/[\s]+/g, '_') + '.mp3';
+                            filename = filename.replace(/[^\w\s-]/g, '').replace(/[\s]+/g, '_') + ext;
                         } else {
-                            filename = 'converted_audio.mp3';
+                            filename = 'converted_file' + ext;
                         }
 
                         // Try to extract from Content-Disposition header
@@ -782,6 +899,7 @@
             try {
                 const formData = new FormData();
                 formData.append('input_type', 'file');
+                formData.append('output_format', fileSelectedFormat);
                 formData.append('video', fileInput.files[0]);
                 formData.append('start_time', document.getElementById('file_start_time').value);
                 formData.append('end_time', document.getElementById('file_end_time').value);
@@ -801,17 +919,18 @@
                 if (response.ok) {
                     const contentType = response.headers.get('content-type');
 
-                    if (contentType && contentType.includes('audio')) {
+                    if (contentType && (contentType.includes('audio') || contentType.includes('video'))) {
                         const blob = await response.blob();
                         const disposition = response.headers.get('content-disposition');
 
                         // Get filename from metadata or original file
+                        const ext = fileSelectedFormat === 'mp4' ? '.mp4' : '.mp3';
                         let filename = document.getElementById('file_meta_title').value.trim();
                         if (filename) {
-                            filename = filename.replace(/[^\w\s-]/g, '').replace(/[\s]+/g, '_') + '.mp3';
+                            filename = filename.replace(/[^\w\s-]/g, '').replace(/[\s]+/g, '_') + ext;
                         } else {
-                            const originalName = fileInput.files[0]?.name || 'converted_audio';
-                            filename = originalName.replace(/\.[^/.]+$/, '') + '.mp3';
+                            const originalName = fileInput.files[0]?.name || 'converted_file';
+                            filename = originalName.replace(/\.[^/.]+$/, '') + ext;
                         }
 
                         // Try to extract from Content-Disposition header
