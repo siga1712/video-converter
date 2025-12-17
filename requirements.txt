@@ -1,0 +1,6 @@
+flask==3.1.2
+gunicorn==21.2.0
+werkzeug==3.1.4
+yt-dlp==2025.10.14
+moviepy==2.2.1
+mutagen==1.47.0

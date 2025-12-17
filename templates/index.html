@@ -1,0 +1,848 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video to Audio Converter</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            max-width: 650px;
+            width: 100%;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00d4ff, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .logo p {
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #00d4ff, #7c3aed);
+            color: white;
+            border-color: transparent;
+        }
+
+        .input-section {
+            display: none;
+        }
+
+        .input-section.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        label {
+            display: block;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="url"],
+        input[type="number"] {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            color: white;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="url"]:focus,
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #00d4ff;
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        input[type="text"]::placeholder,
+        input[type="url"]::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            background: rgba(255, 255, 255, 0.08);
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-wrapper:hover {
+            border-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-input-wrapper .icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .file-input-wrapper p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+        }
+
+        .file-input-wrapper .file-name {
+            color: #00d4ff;
+            font-weight: 500;
+            margin-top: 0.5rem;
+        }
+
+        .section-box {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-box h3 {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .time-inputs {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .time-group {
+            flex: 1;
+        }
+
+        .time-group label {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .time-group input {
+            font-family: 'Inter', monospace;
+            text-align: center;
+        }
+
+        /* Metadata Form Styles */
+        .metadata-section {
+            display: none;
+        }
+
+        .metadata-section.show {
+            display: block;
+        }
+
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .metadata-grid .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .metadata-grid label {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .metadata-grid input {
+            padding: 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        /* Video Preview */
+        .video-preview {
+            display: none;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .video-preview.show {
+            display: block;
+        }
+
+        .video-preview img {
+            max-width: 100%;
+            height: auto;
+            max-height: 200px;
+            border-radius: 10px;
+            margin-bottom: 0.75rem;
+        }
+
+        .video-preview .video-title {
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .video-preview .video-duration {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.85rem;
+        }
+
+        .submit-btn,
+        .fetch-btn {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #00d4ff, #7c3aed);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .submit-btn:hover,
+        .fetch-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.3);
+        }
+
+        .submit-btn:active,
+        .fetch-btn:active {
+            transform: translateY(0);
+        }
+
+        .submit-btn:disabled,
+        .fetch-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .fetch-btn {
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            margin-bottom: 1rem;
+        }
+
+        .back-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.7);
+            border-radius: 10px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .note {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.8rem;
+        }
+
+        .error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: #fca5a5;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading p {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Step indicator */
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .step {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .step.active {
+            background: linear-gradient(135deg, #00d4ff, #7c3aed);
+            width: 30px;
+            border-radius: 5px;
+        }
+
+        /* Hide steps for file upload since it's single step */
+        .file-mode .step-indicator {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container" id="mainContainer">
+        <div class="logo">
+            <h1>🎵 AudioExtract</h1>
+            <p>Convert videos to MP3 with metadata editing</p>
+        </div>
+
+        <div class="step-indicator" id="stepIndicator">
+            <div class="step active" id="step1"></div>
+            <div class="step" id="step2"></div>
+        </div>
+
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+
+        <div id="errorBox" class="error" style="display: none;"></div>
+
+        <!-- Step 1: Input Selection -->
+        <div id="step1-content">
+            <form id="inputForm">
+                <div class="tabs">
+                    <button type="button" class="tab active" onclick="switchTab('url')">🔗 Paste URL</button>
+                    <button type="button" class="tab" onclick="switchTab('file')">📁 Upload File</button>
+                </div>
+
+                <div id="url-section" class="input-section active">
+                    <div class="form-group">
+                        <label for="video_url">Video URL</label>
+                        <input type="url" name="video_url" id="video_url"
+                            placeholder="Paste URL from YouTube, Vimeo, Twitter, TikTok...">
+                    </div>
+                    <button type="button" class="fetch-btn" id="fetchBtn" onclick="fetchVideoInfo()">
+                        <span>🔍</span> Fetch Video Info
+                    </button>
+                </div>
+
+                <div id="file-section" class="input-section">
+                    <div class="form-group">
+                        <div class="file-input-wrapper" id="dropZone">
+                            <div class="icon">📹</div>
+                            <p>Click or drag a video file here</p>
+                            <p class="file-name" id="fileName"></p>
+                            <input type="file" name="video" id="videoFile" accept="video/*,audio/*">
+                        </div>
+                    </div>
+
+                    <!-- File upload gets metadata and convert in one step -->
+                    <div class="section-box">
+                        <h3>✂️ Trim Audio (Optional)</h3>
+                        <div class="time-inputs">
+                            <div class="time-group">
+                                <label>Start Time</label>
+                                <input type="text" id="file_start_time" placeholder="00:00:00">
+                            </div>
+                            <div class="time-group">
+                                <label>End Time</label>
+                                <input type="text" id="file_end_time" placeholder="00:00:00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-box metadata-section show">
+                        <h3>🏷️ Edit ID3 Tags (Optional)</h3>
+                        <div class="metadata-grid">
+                            <div class="full-width">
+                                <label>Title</label>
+                                <input type="text" id="file_meta_title" placeholder="Song title">
+                            </div>
+                            <div>
+                                <label>Artist</label>
+                                <input type="text" id="file_meta_artist" placeholder="Artist name">
+                            </div>
+                            <div>
+                                <label>Album</label>
+                                <input type="text" id="file_meta_album" placeholder="Album name">
+                            </div>
+                            <div>
+                                <label>Genre</label>
+                                <input type="text" id="file_meta_genre" placeholder="e.g. Hip-Hop, Rock">
+                            </div>
+                            <div>
+                                <label>Year</label>
+                                <input type="text" id="file_meta_year" placeholder="2024">
+                            </div>
+                            <div>
+                                <label>Track #</label>
+                                <input type="text" id="file_meta_track" placeholder="1">
+                            </div>
+                            <div>
+                                <label>Comment</label>
+                                <input type="text" id="file_meta_comment" placeholder="Optional comment">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="submit-btn" onclick="convertFile()">
+                        <span>🎧</span> Convert & Download MP3
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Step 2: Metadata Editing (URL only) -->
+        <div id="step2-content" style="display: none;">
+            <div class="video-preview show" id="videoPreview">
+                <img id="previewThumbnail" src="" alt="Video thumbnail">
+                <div class="video-title" id="previewTitle"></div>
+                <div class="video-duration" id="previewDuration"></div>
+            </div>
+
+            <form id="convertForm">
+                <input type="hidden" name="input_type" value="url">
+                <input type="hidden" name="video_url" id="convert_video_url">
+
+                <div class="section-box">
+                    <h3>✂️ Trim Audio (Optional)</h3>
+                    <div class="time-inputs">
+                        <div class="time-group">
+                            <label>Start Time</label>
+                            <input type="text" name="start_time" id="start_time" placeholder="00:00:00">
+                        </div>
+                        <div class="time-group">
+                            <label>End Time</label>
+                            <input type="text" name="end_time" id="end_time" placeholder="00:00:00">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-box">
+                    <h3>🏷️ Edit ID3 Tags</h3>
+                    <div class="metadata-grid">
+                        <div class="full-width">
+                            <label>Title</label>
+                            <input type="text" name="meta_title" id="meta_title" placeholder="Song title">
+                        </div>
+                        <div>
+                            <label>Artist</label>
+                            <input type="text" name="meta_artist" id="meta_artist" placeholder="Artist name">
+                        </div>
+                        <div>
+                            <label>Album</label>
+                            <input type="text" name="meta_album" id="meta_album" placeholder="Album name">
+                        </div>
+                        <div>
+                            <label>Genre</label>
+                            <input type="text" name="meta_genre" id="meta_genre" placeholder="e.g. Hip-Hop, Rock">
+                        </div>
+                        <div>
+                            <label>Year</label>
+                            <input type="text" name="meta_year" id="meta_year" placeholder="2024">
+                        </div>
+                        <div>
+                            <label>Track #</label>
+                            <input type="text" name="meta_track" id="meta_track" placeholder="1">
+                        </div>
+                        <div>
+                            <label>Comment</label>
+                            <input type="text" name="meta_comment" id="meta_comment" placeholder="Optional comment">
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="submit-btn">
+                    <span>🎧</span> Convert & Download MP3
+                </button>
+            </form>
+
+            <button class="back-btn" onclick="goBack()">← Back to URL Input</button>
+        </div>
+
+        <div class="loading" id="loadingIndicator">
+            <div class="spinner"></div>
+            <p id="loadingText">Processing your request...</p>
+        </div>
+
+        <p class="note">Supports YouTube, Vimeo, Twitter, TikTok, Instagram, and 1000+ sites</p>
+    </div>
+
+    <script>
+        let currentTab = 'url';
+
+        function switchTab(type) {
+            currentTab = type;
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.input-section').forEach(section => section.classList.remove('active'));
+
+            if (type === 'url') {
+                document.querySelector('.tab:first-child').classList.add('active');
+                document.getElementById('url-section').classList.add('active');
+                document.getElementById('stepIndicator').style.display = 'flex';
+            } else {
+                document.querySelector('.tab:last-child').classList.add('active');
+                document.getElementById('file-section').classList.add('active');
+                document.getElementById('stepIndicator').style.display = 'none';
+            }
+        }
+
+        // File input display
+        document.getElementById('videoFile').addEventListener('change', function (e) {
+            const fileName = e.target.files[0]?.name || '';
+            document.getElementById('fileName').textContent = fileName;
+
+            // Auto-fill title from filename
+            if (fileName) {
+                const baseName = fileName.replace(/\.[^/.]+$/, '');
+                document.getElementById('file_meta_title').value = baseName;
+            }
+        });
+
+        function showError(message) {
+            const errorBox = document.getElementById('errorBox');
+            errorBox.textContent = message;
+            errorBox.style.display = 'block';
+            setTimeout(() => {
+                errorBox.style.display = 'none';
+            }, 5000);
+        }
+
+        function showLoading(message) {
+            document.getElementById('loadingText').textContent = message;
+            document.getElementById('loadingIndicator').classList.add('show');
+            document.getElementById('step1-content').style.display = 'none';
+            document.getElementById('step2-content').style.display = 'none';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingIndicator').classList.remove('show');
+        }
+
+        async function fetchVideoInfo() {
+            const url = document.getElementById('video_url').value.trim();
+            if (!url) {
+                showError('Please enter a video URL');
+                return;
+            }
+
+            showLoading('Fetching video information...');
+
+            try {
+                const response = await fetch('/fetch-info', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to fetch video info');
+                }
+
+                // Populate step 2 with video info
+                document.getElementById('convert_video_url').value = url;
+                document.getElementById('previewTitle').textContent = data.title || 'Unknown Title';
+                document.getElementById('previewDuration').textContent = `Duration: ${data.duration_formatted}`;
+                document.getElementById('end_time').placeholder = data.duration_formatted;
+
+                // Set thumbnail
+                if (data.thumbnail) {
+                    document.getElementById('previewThumbnail').src = data.thumbnail;
+                    document.getElementById('previewThumbnail').style.display = 'block';
+                } else {
+                    document.getElementById('previewThumbnail').style.display = 'none';
+                }
+
+                // Pre-fill metadata
+                document.getElementById('meta_title').value = data.title || '';
+                document.getElementById('meta_artist').value = data.artist || '';
+                document.getElementById('meta_album').value = data.album || '';
+                document.getElementById('meta_year').value = data.year || '';
+
+                // Show step 2
+                hideLoading();
+                document.getElementById('step1-content').style.display = 'none';
+                document.getElementById('step2-content').style.display = 'block';
+                document.getElementById('step1').classList.remove('active');
+                document.getElementById('step2').classList.add('active');
+
+            } catch (error) {
+                hideLoading();
+                document.getElementById('step1-content').style.display = 'block';
+                showError(error.message);
+            }
+        }
+
+        function goBack() {
+            document.getElementById('step2-content').style.display = 'none';
+            document.getElementById('step1-content').style.display = 'block';
+            document.getElementById('step1').classList.add('active');
+            document.getElementById('step2').classList.remove('active');
+        }
+
+        // URL conversion form
+        document.getElementById('convertForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            showLoading('Converting your video... This may take a moment.');
+
+            try {
+                const formData = new FormData(this);
+                const response = await fetch('/convert', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const contentType = response.headers.get('content-type');
+
+                    if (contentType && contentType.includes('audio')) {
+                        // Success - download the file
+                        const blob = await response.blob();
+                        const disposition = response.headers.get('content-disposition');
+                        let filename = 'converted_audio.mp3';
+
+                        if (disposition) {
+                            const match = disposition.match(/filename="?([^";\n]+)"?/);
+                            if (match) filename = decodeURIComponent(match[1]);
+                        }
+
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        a.remove();
+
+                        // Go back to step 1
+                        goBack();
+                        document.getElementById('video_url').value = '';
+
+                    } else {
+                        const data = await response.json();
+                        throw new Error(data.error || 'Conversion failed');
+                    }
+                } else {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Conversion failed. Please try again.');
+                }
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                hideLoading();
+                document.getElementById('step2-content').style.display = 'block';
+            }
+        });
+
+        // File conversion
+        async function convertFile() {
+            const fileInput = document.getElementById('videoFile');
+            if (!fileInput.files[0]) {
+                showError('Please select a video file');
+                return;
+            }
+
+            showLoading('Converting your file... This may take a moment.');
+
+            try {
+                const formData = new FormData();
+                formData.append('input_type', 'file');
+                formData.append('video', fileInput.files[0]);
+                formData.append('start_time', document.getElementById('file_start_time').value);
+                formData.append('end_time', document.getElementById('file_end_time').value);
+                formData.append('meta_title', document.getElementById('file_meta_title').value);
+                formData.append('meta_artist', document.getElementById('file_meta_artist').value);
+                formData.append('meta_album', document.getElementById('file_meta_album').value);
+                formData.append('meta_genre', document.getElementById('file_meta_genre').value);
+                formData.append('meta_year', document.getElementById('file_meta_year').value);
+                formData.append('meta_track', document.getElementById('file_meta_track').value);
+                formData.append('meta_comment', document.getElementById('file_meta_comment').value);
+
+                const response = await fetch('/convert', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const contentType = response.headers.get('content-type');
+
+                    if (contentType && contentType.includes('audio')) {
+                        const blob = await response.blob();
+                        const disposition = response.headers.get('content-disposition');
+                        let filename = 'converted_audio.mp3';
+
+                        if (disposition) {
+                            const match = disposition.match(/filename="?([^";\n]+)"?/);
+                            if (match) filename = decodeURIComponent(match[1]);
+                        }
+
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        a.remove();
+
+                        // Reset form
+                        fileInput.value = '';
+                        document.getElementById('fileName').textContent = '';
+                        document.getElementById('file_meta_title').value = '';
+                        document.getElementById('file_meta_artist').value = '';
+                        document.getElementById('file_meta_album').value = '';
+                        document.getElementById('file_meta_genre').value = '';
+                        document.getElementById('file_meta_year').value = '';
+                        document.getElementById('file_meta_track').value = '';
+                        document.getElementById('file_meta_comment').value = '';
+                        document.getElementById('file_start_time').value = '';
+                        document.getElementById('file_end_time').value = '';
+
+                    } else {
+                        const data = await response.json();
+                        throw new Error(data.error || 'Conversion failed');
+                    }
+                } else {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Conversion failed');
+                }
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                hideLoading();
+                document.getElementById('step1-content').style.display = 'block';
+            }
+        }
+
+        // Time input formatting
+        ['start_time', 'end_time', 'file_start_time', 'file_end_time'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', function (e) {
+                    let value = e.target.value.replace(/[^\d:]/g, '');
+                    e.target.value = value;
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>
